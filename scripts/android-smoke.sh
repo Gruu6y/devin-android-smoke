@@ -21,7 +21,7 @@ ls -lh "$APK"
 
 echo "== start emulator =="
 if ! adb devices | grep -q "emulator-.*device"; then
-  nohup emulator -avd devin -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -no-snapshot -no-sdcard > /tmp/emulator.log 2>&1 &
+  nohup emulator -avd devin -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -no-snapshot > /tmp/emulator.log 2>&1 &
 fi
 adb wait-for-device
 for i in $(seq 1 60); do
