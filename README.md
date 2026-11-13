@@ -28,7 +28,7 @@ Instrumented tests require a running emulator:
 ```bash
 export ANDROID_HOME="$HOME/android-sdk"
 export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$HOME/gradle-8.7/bin:$PATH"
-nohup emulator -avd devin -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -no-snapshot -no-sdcard > /tmp/emulator.log 2>&1 &
+nohup emulator -avd devin -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -no-snapshot > /tmp/emulator.log 2>&1 &
 adb wait-for-device
 until [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ]; do sleep 5; done
 gradle --no-daemon connectedDebugAndroidTest
