@@ -1,0 +1,68 @@
+initialize:
+  - name: "Install JDK 17"
+    uses: github.com/actions/setup-java@v4
+    with:
+      java-version: "17"
+      distribution: "temurin"
+
+  - name: "Install Android SDK"
+    run: |
+      set -euo pipefail
+      export ANDROID_HOME="$HOME/android-sdk"
+      mkdir -p "$ANDROID_HOME/cmdline-tools"
+      cd "$ANDROID_HOME/cmdline-tools"
+      curl -fsSL https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -o tools.zip
+      unzip -q tools.zip -d latest-tmp
+      mv latest-tmp/cmdline-tools "$ANDROID_HOME/cmdline-tools/latest"
+      rm -rf tools.zip latest-tmp
+      echo "ANDROID_HOME=$ANDROID_HOME" >> "$ENVRC"
+      echo 'export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"' >> "$ENVRC"
+      export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"
+      yes | sdkmanager --licenses > /dev/null 2>&1 || true
+      sdkmanager "platform-tools" "build-tools;34.0.0" "platforms;android-34" "emulator" "system-images;android-34;default;x86_64"
+      echo "no" | avdmanager create avd -n devin -k "system-images;android-34;default;x86_64" --device "pixel_6" || true
+
+  - name: "Install Gradle"
+    run: |
+      set -euo pipefail
+      curl -fsSL https://services.gradle.org/distributions/gradle-8.7-bin.zip -o "$HOME/gradle-8.7-bin.zip"
+      unzip -q "$HOME/gradle-8.7-bin.zip" -d "$HOME"
+      rm -f "$HOME/gradle-8.7-bin.zip"
+      echo 'export PATH="$HOME/gradle-8.7/bin:$PATH"' >> "$ENVRC"
+
+maintenance:
+  - name: "Build debug APK"
+    run: |
+      set -euo pipefail
+      gradle --no-daemon assembleDebug
+
+knowledge:
+  - name: build
+    contents: |
+      Build the debug APK:
+      gradle --no-daemon assembleDebug
+      Output: app/build/outputs/apk/debug/app-debug.apk
+
+  - name: test
+    contents: |
+      Unit tests:
+      gradle --no-daemon testDebugUnitTest
+
+      Instrumented tests need a running emulator (see emulator).
+
+  - name: emulator
+    contents: |
+      Start a headless emulator:
+      export ANDROID_HOME="$HOME/android-sdk"
+      export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$HOME/gradle-8.7/bin:$PATH"
+      nohup emulator -avd devin -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -no-snapshot -no-sdcard > /tmp/emulator.log 2>&1 &
+      adb wait-for-device
+      until [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ]; do sleep 5; done
+      adb shell input keyevent 82
+
+      Install and launch:
+      adb install -r app/build/outputs/apk/debug/app-debug.apk
+      adb shell am start -n com.example.devinandroid/.MainActivity
+
+      Instrumented tests:
+      gradle --no-daemon connectedDebugAndroidTest
